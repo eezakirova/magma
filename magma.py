@@ -28,37 +28,14 @@ S_BOXES = [
 # ==========================================================
 
 def read_binary_file(path):
-    """Читает любой файл как байты."""
+    """Читает файл как сырые байты."""
     with open(path, "rb") as file:
         return file.read()
 
 def write_binary_file(path, data):
-    """Записывает байты в файл."""
+    """Записывает сырые байты в файл."""
     with open(path, "wb") as file:
         file.write(data)
-
-def read_text_file(path):
-    """Читает файл как текст UTF-8."""
-    with open(path, "r", encoding="utf-8") as file:
-        return file.read()
-
-def bytes_to_hex_file(path, data):
-    """Сохраняет байты в файл как hex-строку."""
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(data.hex())
-
-def hex_file_to_bytes(path):
-    """Считывает hex-строку из файла и переводит в байты."""
-    text = read_text_file(path)
-    hex_string = "".join(text.split())
-
-    if not hex_string:
-        return b""
-
-    if len(hex_string) % 2 != 0:
-        raise ValueError("Hex-строка должна содержать четное число символов.")
-
-    return bytes.fromhex(hex_string)
 
 def print_preview(title, data):
     """Показывает содержимое байтов как текст и как hex."""
@@ -289,10 +266,12 @@ def print_help():
     print("  encrypt     - режим шифрования")
     print("  decrypt     - режим расшифрования")
     print("  mode        - ecb или cbc")
-    print("  input_file  - для encrypt: любой файл; для decrypt: файл с hex-шифртекстом")
-    print("  output_file - для encrypt: hex-файл; для decrypt: исходный файл в байтах")
+    print("  input_file  - входной файл (бинарный)")
+    print("  output_file - выходной файл (бинарный)")
     print("  key_hex     - ключ длиной 64 hex-символа")
     print("  iv_hex      - IV для CBC, 16 hex-символов")
+    print()
+    print("Примечание: все файлы читаются и записываются как бинарные данные.")
     print()
 
 # ==========================================================
@@ -337,7 +316,7 @@ def main():
             print(f"Режим: ЗАШИФРОВАНИЕ ({mode.upper()})")
             print()
 
-            # Любой файл читаем как байты
+            # Читаем входной файл как бинарные данные
             input_data = read_binary_file(input_file)
 
             # Показ исходного содержимого
@@ -354,17 +333,17 @@ def main():
             # Показ шифртекста
             print_preview("Зашифрованные данные", result)
 
-            # Сохраняем шифртекст как hex
-            bytes_to_hex_file(output_file, result)
-            print(f"Зашифрованный hex сохранён в файл: {output_file}")
+            # Сохраняем шифртекст как бинарные данные
+            write_binary_file(output_file, result)
+            print(f"Зашифрованный файл сохранён в: {output_file}")
 
         else:
             print(f"Режим: РАСШИФРОВАНИЕ ({mode.upper()})")
             print()
 
-            # Файл с hex-шифртекстом
-            input_data = hex_file_to_bytes(input_file)
-            print_preview("Шифртекст после чтения из hex-файла", input_data)
+            # Читаем входной файл как бинарные данные
+            input_data = read_binary_file(input_file)
+            print_preview("Шифртекст (зашифрованные данные)", input_data)
 
             if len(input_data) % BLOCK_LEN != 0:
                 raise ValueError("Длина зашифрованных данных должна быть кратна 8 байтам.")
@@ -380,7 +359,7 @@ def main():
             # Показ расшифрованного результата
             print_preview("Расшифрованные данные", result)
 
-            # Сохраняем обратно исходные байты
+            # Сохраняем результат как бинарные данные
             write_binary_file(output_file, result)
             print(f"Расшифрованный файл сохранён в: {output_file}")
 

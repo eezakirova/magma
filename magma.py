@@ -27,21 +27,29 @@ S_BOXES = [
 # РАБОТА С ФАЙЛАМИ
 # ==========================================================
 
-def read_plain_text(path):
-    """Читает текстовый файл."""
+def read_binary_file(path):
+    """Читает любой файл как байты."""
+    with open(path, "rb") as file:
+        return file.read()
+
+def write_binary_file(path, data):
+    """Записывает байты в файл."""
+    with open(path, "wb") as file:
+        file.write(data)
+
+def read_text_file(path):
+    """Читает файл как текст UTF-8."""
     with open(path, "r", encoding="utf-8") as file:
         return file.read()
 
-def print_text_file(title, path):
-    """Выводит содержимое файла в консоль."""
-    text = read_plain_text(path)
-    print(f"{title} ({path}):")
-    print(text if text else "[пустой файл]")
-    print()
+def bytes_to_hex_file(path, data):
+    """Сохраняет байты в файл как hex-строку."""
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(data.hex())
 
 def hex_file_to_bytes(path):
     """Считывает hex-строку из файла и переводит в байты."""
-    text = read_plain_text(path)
+    text = read_text_file(path)
     hex_string = "".join(text.split())
 
     if not hex_string:
@@ -52,10 +60,15 @@ def hex_file_to_bytes(path):
 
     return bytes.fromhex(hex_string)
 
-def bytes_to_hex_file(path, data):
-    """Сохраняет байты в файл как hex."""
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(data.hex())
+def print_preview(title, data):
+    """Показывает содержимое байтов как текст и как hex."""
+    print(f"{title}:")
+    text = data.decode("utf-8", errors="replace")
+    print("Текст:")
+    print(text if text else "[пустой файл]")
+    print("HEX:")
+    print(data.hex() if data else "[пустой файл]")
+    print()
 
 # ==========================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -276,8 +289,8 @@ def print_help():
     print("  encrypt     - режим шифрования")
     print("  decrypt     - режим расшифрования")
     print("  mode        - ecb или cbc")
-    print("  input_file  - текстовый файл с hex-данными")
-    print("  output_file - файл для записи результата")
+    print("  input_file  - для encrypt: любой файл; для decrypt: файл с hex-шифртекстом")
+    print("  output_file - для encrypt: hex-файл; для decrypt: исходный файл в байтах")
     print("  key_hex     - ключ длиной 64 hex-символа")
     print("  iv_hex      - IV для CBC, 16 hex-символов")
     print()
@@ -317,15 +330,18 @@ def main():
             print("Внимание: IV игнорируется в режиме ECB.")
 
         print("=" * 60)
-        print_text_file("Входной файл", input_file)
-
-        input_data = hex_file_to_bytes(input_file)
 
         round_keys = prepare_round_keys(bytes.fromhex(key_hex))
 
         if action == "encrypt":
             print(f"Режим: ЗАШИФРОВАНИЕ ({mode.upper()})")
             print()
+
+            # Любой файл читаем как байты
+            input_data = read_binary_file(input_file)
+
+            # Показ исходного содержимого
+            print_preview("Входной файл", input_data)
 
             prepared_data = apply_padding(input_data)
 
@@ -335,9 +351,20 @@ def main():
                 iv = bytes.fromhex(iv_hex)
                 result = encrypt_cbc(prepared_data, round_keys, iv)
 
+            # Показ шифртекста
+            print_preview("Зашифрованные данные", result)
+
+            # Сохраняем шифртекст как hex
+            bytes_to_hex_file(output_file, result)
+            print(f"Зашифрованный hex сохранён в файл: {output_file}")
+
         else:
             print(f"Режим: РАСШИФРОВАНИЕ ({mode.upper()})")
             print()
+
+            # Файл с hex-шифртекстом
+            input_data = hex_file_to_bytes(input_file)
+            print_preview("Шифртекст после чтения из hex-файла", input_data)
 
             if len(input_data) % BLOCK_LEN != 0:
                 raise ValueError("Длина зашифрованных данных должна быть кратна 8 байтам.")
@@ -350,9 +377,13 @@ def main():
 
             result = remove_padding(result)
 
-        bytes_to_hex_file(output_file, result)
+            # Показ расшифрованного результата
+            print_preview("Расшифрованные данные", result)
 
-        print_text_file("Выходной файл", output_file)
+            # Сохраняем обратно исходные байты
+            write_binary_file(output_file, result)
+            print(f"Расшифрованный файл сохранён в: {output_file}")
+
         print("Операция выполнена успешно.")
         print("=" * 60)
 
